@@ -10,6 +10,7 @@ The contract written in this repository makes the minimum possible of assumption
 Below we describe some of the functionality we require the contract to have.
 ### Structs
     - `EntitiyInfo`: stores the `name` of the entity and some `data` about it.
+**NOTE**: An entity cannot have the name `0`.
 
 ### External function
     - `update_data_for_all_entities`: Updates the data of all entities. What the data is and how it is updated is irrelevant for us. What is important is that the contract has to update all data of all entities (i.e. the contract has to "iterate" over all entities).
