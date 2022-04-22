@@ -5,31 +5,12 @@ from starkware.cairo.common.alloc import alloc
 from starkware.starknet.common.syscalls import storage_read, storage_write
 from starkware.cairo.common.math import sign
 
-# This contract manages members of a club.
-# In this club, all users are rewarded periodically (say every week). 
-# Hence the contract needs a function that "iterates" over each member and pays each member.
-# 
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-
-
-
-
 const TRUE = 1
 const FALSE = 0
 
-struct UserBalances:
-    member balance1 : felt
-    member balance2 : felt
+struct UserInfo:
+    member name : felt
+    member balance : felt
 end
 
 ################################
@@ -41,7 +22,7 @@ func num_users_storage() -> (num : felt):
 end
 
 @storage_var
-func user_index_to_user_dictionary_key_storage(index : felt) -> (slot : felt):
+func user_index_to_user_memory_key_storage(index : felt) -> (slot : felt):
 end
 
 ################################
@@ -55,38 +36,38 @@ func num_users{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 end
 
 @view
-func user_index_to_user_dictionary_key{
+func user_index_to_user_memory_key{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 }(index : felt) -> (slot : felt):
-    let (slot) = user_index_to_user_dictionary_key_storage.read(index)
+    let (slot) = user_index_to_user_memory_key_storage.read(index)
     return (slot)
 end
 
 @view
-func user_dictionary_key_to_user_balances{
+func user_memory_key_to_user_info{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
-}(memory_key : felt) -> (user_balances : UserBalances):
-    let user_balances_array = cast([memory_key], UserBalances*)
-    let user_balances = [user_balances_array]
-    return (user_balances)
+}(memory_key : felt) -> (user_info : UserInfo):
+    let user_info_array = cast([memory_key], UserInfo*)
+    let user_info = [user_info_array]
+    return (user_info)
 end
 
 @view
 func is_user_registered{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_alias : felt
+    user_name : felt
 ) -> (bool : felt):
-    let (user_memory_key) = get_user_dictionary_key(user_alias)
-    let (user_balance1) = storage_read(user_memory_key)
-    let (user_balance2) = storage_read(user_memory_key)
-    
-    # make separate function for these checks
-    if sign(user_balance1-100) == 1:
-        if sign(user_balance2-100)==1:
-            return (TRUE)
-        end
-    end
-    return (FALSE)
+    alloc_locals
+    let (user_memory_key) = get_user_memory_key(user_name)
+    let (user_name) = storage_read(user_memory_key)
+    let (user_balance) = storage_read(user_memory_key + 1)
 
+    # make separate function for these checks
+    let (is_positive) = sign(user_balance - 100)
+    if is_positive == 1:
+        return (TRUE)
+    else:
+        return (FALSE)
+    end
 end
 
 ################################
@@ -95,11 +76,12 @@ end
 
 @external
 func register_user{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_alias : felt, user_balances : UserBalances
+    user_info : UserInfo
 ):
-    let (user_dictionary_key : felt) = get_user_dictionary_key(user_alias)
-    storage_write(user_dictionary_key, user_balances.balance1)
-    storage_write(user_dictionary_key + 1, user_balances.balance2)
+    let user_name = user_info.name
+    let (user_dictionary_key : felt) = get_user_memory_key(user_name)
+    storage_write(user_dictionary_key, user_name)
+    storage_write(user_dictionary_key + 1, user_info.balance)
     let (current_num_users) = num_users()
     num_users_storage.write(current_num_users + 1)
     return ()
@@ -110,11 +92,11 @@ end
 ################################
 
 @view
-func get_user_dictionary_key{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_alias : felt
+func get_user_memory_key{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_name : felt
 ) -> (key : felt):
-    # TODO: Here we could put the hash of the alias
-    return (user_alias)
+    # TODO: Here we could put the hash of the name
+    return (user_name)
 end
 
 ################################
@@ -125,9 +107,8 @@ end
 # to the exploit
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    let dummy_user_alias = 100
-    let dummy_user_balances = UserBalances(balance1=400, balance2=999)
-    register_user(dummy_user_alias, dummy_user_balances)
+    let dummy_user_info = UserInfo(name=100, balance=999)
+    register_user(dummy_user_info)
     return ()
 end
 
@@ -164,10 +145,10 @@ end
 func reward_user{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_index : felt
 ):
-    let (key) = user_index_to_user_dictionary_key(user_index)
-    let (user_balances) = user_dictionary_key_to_user_balances(key)
-    let user_balance = user_balances.balance
-    assert user_balances.balance = user_balance + 1
+    let (key) = user_index_to_user_memory_key(user_index)
+    let (user_info) = user_memory_key_to_user_info(key)
+    let user_balance = user_info.balance
+    assert user_info.balance = user_balance + 1
     return ()
 end
 
