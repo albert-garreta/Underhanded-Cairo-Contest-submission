@@ -24,9 +24,11 @@ We begin with the following observations:
 - The presence of the function `update_data_for_all_entities` requires the contract to have a method for "iterating" through all entities.  This means that we need to  cannot simply store user information in a dictionary-like fashion (as seems to be the defualt approach in starknet contract writing). 
 - On the other hand, the view functions `is_entity_registered` and `get_entity_info` requires to access entity information in a dictionary-like fashion (unless we want to be very inefficient and we "iterate" through all entities).
 
-The approach taken is the following:
+The approach taken by the developer implementing the contract is the following:
 - Each entity has a memory cell assigned, which is `sn_keccak256(entity_name)`, where `sn_keccak256` is StarkNet's version of the Keccak256 hash function.
 - For each `entity_name`, the corresponding struct `EntityInfo` is stored starting at the memory cell assigned to the entity (used all needed subsequent memory cells).
 - There's a storage variable called `num_users_storage` which stores the total number of members.
-- There's a storage variable called `user_index_to_user_memory_key` wich is used to map integers from [0, ..., num_users-1] to a user memory cell.
+- There's a storage variable called `user_index_to_user_memory_key` wich is used to map integers from [0, ..., num_users-1] to a user memory cell. **NOTE:** we are assuming that the index associated to a user is not necessarily immutable (if it were, the contract design could be simplified).
+
 The first two bullets allow the contract to access user information in a dictionary-like fashion: Given a user name, we obtain its `UserInfo` by reading the cell `sn_keccak256(user_name)`. The other two bullets allow the contract to use recursion in order to "iterate" over all users.
+
