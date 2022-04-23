@@ -1,37 +1,34 @@
-# cairo_underhanded_solution
+# Submission to the Underhanded Cairo contest
 
+## Description
 
-## Descriptiion of the contract `club.cairo`
+This is a "proof-of-concept" project with a hidden bug within it.
 
-This contract manages a network of entities. Periodically, some data is updated for all entities (e.g. the entities could be banks and the data could be monthly earnings). The members of this network have certain privileges and thus it is not easy to be a part of the network.
+The context is the following: the project manages a network of *entities* (it is not important what these entities are exactly) with the following scheme:
 
-The contract written in this repository makes the minimum possible of assumptions on the specific operating logic of this network. The assumptions are kept to a minimum to guarantee the existence of an exploit.
+- There are two contracts, one in Ethereum's layer 1 (L1) and one in StarkNet's layer 2 (L2). 
+- All the funds of the entities live in the L1.
+- The L2 contract performs all the heavy computations related to the management of the entities' funds and data. It sends the results of these computations to the L1 contract, and the L1 contract then acts accordingly.
+- Being part of this network grants privileges and costs some fees.
 
-Below we describe some of the functionality we require the contract to have.
-### Structs
-    - `EntitiyInfo`: stores the `name` of the entity and some `data` about it.
-**NOTE**: An entity cannot have the name `0`.
+## Design choices
 
-### External function
-    - `update_data_for_all_entities`: Updates the data of all entities. What the data is and how it is updated is irrelevant for us. What is important is that the contract has to update all data of all entities (i.e. the contract has to "iterate" over all entities).
+The project makes the following design choices:
 
-### View function
-    - `is_entity_registered`: Takes the name of an entity and returns 1 or 0 depending if such entity is a member of the network or not. 
-    - `get_entity_info`: Takes the name of an entity, checks whether it is registered or not, and if yes then returns the struct `EntityInfo` corresponding to the entity.
+1. Entities have a name, and they are identified in the L1 contract by the keccak256 hash of such a name (alternatively, they could be identified with the hash of a passphrase). In the L2 contract they are identified by the first 250 bits of this hash (this is the standard version the keccak function used within StarkNet).
 
-## Implementation 
-We begin with the following observations:
-- The presence of the function `update_data_for_all_entities` requires the contract to have a method for "iterating" through all entities.  This means that we need to  cannot simply store user information in a dictionary-like fashion (as seems to be the defualt approach in starknet contract writing). 
-- On the other hand, the view functions `is_entity_registered` and `get_entity_info` requires to access entity information in a dictionary-like fashion (unless we want to be very inefficient and we "iterate" through all entities).
+[-] *Justification:* this makes sense (as opposed to, for example, using a wallet address for each entity) if entities are "wallet-less": for example, entities could be non-tech-savvy local stores; or they could be more "ethereal" objects such as databases; or even huge communities such as entire countries.
 
-The approach taken by the developer implementing the contract is the following:
-- Each entity has a memory cell assigned, which is `sn_keccak256(entity_name)`, where `sn_keccak256` is StarkNet's version of the Keccak256 hash function.
-- For each `entity_name`, the corresponding struct `EntityInfo` is stored starting at the memory cell assigned to the entity (used all needed subsequent memory cells).
-- There's a storage variable called `num_users_storage` which stores the total number of members.
-- There's a storage variable called `user_index_to_user_memory_key` wich is used to map integers from [0, ..., num_users-1] to a user memory cell. **NOTE:** we are assuming that the index associated to a user is not necessarily immutable (if it were, the contract design could be simplified).
+2. In the L2 contract, the entity identifier (i.e. the hash of the entity's name) is used as the memory location where the entity information is stored (together with all extra subsequent memory cells required).
 
-The first two bullets allow the contract to access user information in a dictionary-like fashion: Given a user name, we obtain its `UserInfo` by reading the cell `sn_keccak256(user_name)`. The other two bullets allow the contract to use recursion in order to "iterate" over all users.
+*Justification:* Depending on the functionality implemented, this can be more efficient (and also more consistent with the L1 contract) than using, for example, a storage variable or the `dict` method from the standard library. This is because the name hashes are already used and provided by the L1 contract. 
 
+3. An entity can be registered or not in the L2 contract. The only way an entity can become registered in the L2 contract is via a message sent from the L1 contract (see the function `register_entity` in the contract `contract.cairo`).
 
+Here I present a minimal StarkNet contract that follows these guidelines and that contains a bug/exploit. Most functionality is left unimplemented since it is not relevant to the bug. **NOTE** The bug is hidden within the L2 contract and it is not related to L1-L2 message communication.
 
-***Convention strings are ascii
+## Assumptions and notes
+
+- It is assumed that the L1 contract and the L1-L2 communication between the L1 and L2 contracts is completely secure. For this reason I do not provide any L1 contract implementation (I just assume that the L1 part works as expected).
+****Remove? - Entity names are identified with integers (e.g the ascii encoding of a string) different than `0`.
+
