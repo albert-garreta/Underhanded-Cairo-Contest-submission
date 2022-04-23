@@ -4,13 +4,14 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.alloc import alloc
 from starkware.starknet.common.syscalls import storage_read, storage_write
 from starkware.cairo.common.math import sign
+from starkware.cairo.common.keccak import unsafe_keccak
 
 const TRUE = 1
 const FALSE = 0
 
 struct EntityInfo:
     # The actual contents of this struct are irrelevant to us
-    member name : felt  # TODO: remove the name field?
+    member name : felt
     member data1 : felt
     member data2 : felt
     # ...
@@ -59,11 +60,12 @@ end
 
 @view
 func is_entity_registered{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    entity_name : felt
+    hashed_entity_identifier : felt
 ) -> (bool : felt):
     alloc_locals
-    local entity_name = entity_name
-    let (entity_memory_cell) = get_entity_memory_cell(entity_name)
+    # The entity's information is stored in `sn_keccak("entity_identifier")`, which is the argument
+    # passed tot he function
+    let entity_memory_cell = hashed_entity_identifier
     let (entity_name) = storage_read(entity_memory_cell)
     let (is_entity_name_more_than_zero) = sign(entity_name - 1)
     if is_entity_name_more_than_zero == 1:
@@ -80,8 +82,9 @@ end
 func get_entity_memory_cell{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     entity_name : felt
 ) -> (key : felt):
-    # TODO: Here we could put the hash of the name
-    return (entity_name)
+    let entity_name_as_array = cast(entity_name, felt*)
+    let (memory_cell_high, memory_cell_low) = unsafe_keccak(data=entity_name_as_array, length=1)
+    return ()
 end
 
 ################################
@@ -89,17 +92,18 @@ end
 ################################
 
 @external
-func PLACEHOLDER_register_user{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    entity_info : EntityInfo
+func PLACEHOLDER_register_entity{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    entity_info : EntityInfo, hashed_entity_identifier : felt
 ):
     # IMPORTANT NOTE: This function is a PLACEHOLDER for a function that registers entities into the system.
     # An actual implementation of such a function **MUST NOT BE MARKED EXTERNAL**, and it must perform all
     # necessary security checks before registering an identity (which will depend on the specific
     # context in which the contract is written)
     # We have written it because we need to have some entities registered into the system for our exploit to work.
-    
+
     let entity_name = entity_info.name
-    let (entity_memory_cell : felt) = get_entity_memory_cell(entity_name)
+    # let (entity_memory_cell : felt) = get_entity_memory_cell(entity_name)
+    let entity_memory_cell = hashed_entity_identifier
     storage_write(entity_memory_cell, entity_name)
     storage_write(entity_memory_cell + 1, entity_info.data1)
     storage_write(entity_memory_cell + 2, entity_info.data2)
@@ -112,7 +116,7 @@ func PLACEHOLDER_register_user{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
 end
 
 @external
-func updata_data_for_all_entities{
+func update_data_for_all_entities{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 }():
     # Using the mapping index -> memory_cell provided by the variable `entity_index_to_entity_memory_cell` and the variable
