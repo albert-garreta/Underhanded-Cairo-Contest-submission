@@ -32,3 +32,6 @@ The approach taken by the developer implementing the contract is the following:
 
 The first two bullets allow the contract to access user information in a dictionary-like fashion: Given a user name, we obtain its `UserInfo` by reading the cell `sn_keccak256(user_name)`. The other two bullets allow the contract to use recursion in order to "iterate" over all users.
 
+
+
+***Convention strings are ascii
