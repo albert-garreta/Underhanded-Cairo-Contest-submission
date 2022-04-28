@@ -1,8 +1,8 @@
 # Submission to the Underhanded Cairo contest
 
-## Description
+This is a "proof-of-concept" project with a hidden bug/exploit within it. It was submitted to the *Underhanded Cairo contest* (April 2022) and obtained an honorable mention (from a total of 1 winner and 2 honorable mentions).
 
-This is a "proof-of-concept" project with a hidden bug within it.
+The bug is described within the folder `exploit_description`. Outside of this folder there are as little hints as possible about what the exploit is, this way the repository can be trated as an exercise where the reader tries to find the hidden bug.
 
 The context is the following: the project manages a network of *entities* (it is not important what these entities are exactly) with the following scheme:
 
