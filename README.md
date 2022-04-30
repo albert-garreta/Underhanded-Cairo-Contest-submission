@@ -7,6 +7,8 @@ Here are the the winner's solution and the other "honorably mentioned" solution:
 - [Winner](https://github.com/milancermak/cairo-underhanded)
 - [Honorable mention](https://github.com/microbecode/starknet-fiddling/tree/entry2)
 
+## Description
+
 The bug is described within the folder `exploit_description`. Outside of this folder there are as little hints as possible about what the exploit is, this way the repository can be trated as an exercise where the reader tries to find the hidden bug.
 
 The context is the following: the project manages a network of *entities* (it is not important what these entities are exactly) with the following scheme:

@@ -5,6 +5,7 @@ from starkware.cairo.common.alloc import alloc
 from starkware.starknet.common.syscalls import storage_read, storage_write
 from starkware.cairo.common.math import sign
 from starkware.cairo.common.keccak import unsafe_keccak
+#
 
 struct EntityInfo:
     # This struct stores the information concerning an entity
